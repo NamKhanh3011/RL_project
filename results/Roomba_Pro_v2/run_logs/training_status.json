@@ -1,0 +1,47 @@
+{
+    "RoombaCleaner": {
+        "checkpoints": [
+            {
+                "steps": 49985,
+                "file_path": "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-49985.onnx",
+                "reward": 16.26517192949541,
+                "creation_time": 1795092128.1152983,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-49985.pt"
+                ]
+            },
+            {
+                "steps": 99987,
+                "file_path": "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-99987.onnx",
+                "reward": 19.328673298542316,
+                "creation_time": 1795092676.2381027,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-99987.pt"
+                ]
+            },
+            {
+                "steps": 143381,
+                "file_path": "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-143381.onnx",
+                "reward": 19.59087294183912,
+                "creation_time": 1795093168.3124108,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-143381.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 143381,
+            "file_path": "results\\Roomba_Pro_v2\\RoombaCleaner.onnx",
+            "reward": 19.59087294183912,
+            "creation_time": 1795093168.3124108,
+            "auxillary_file_paths": [
+                "results\\Roomba_Pro_v2\\RoombaCleaner\\RoombaCleaner-143381.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.8.0+cu128"
+    }
+}

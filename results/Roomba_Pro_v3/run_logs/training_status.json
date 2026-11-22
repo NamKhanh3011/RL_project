@@ -1,0 +1,56 @@
+{
+    "RoombaCleaner": {
+        "checkpoints": [
+            {
+                "steps": 49984,
+                "file_path": "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-49984.onnx",
+                "reward": 10.402528420711556,
+                "creation_time": 1795095243.836618,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-49984.pt"
+                ]
+            },
+            {
+                "steps": 99981,
+                "file_path": "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-99981.onnx",
+                "reward": 19.136206634475716,
+                "creation_time": 1795095745.1525857,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-99981.pt"
+                ]
+            },
+            {
+                "steps": 149980,
+                "file_path": "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-149980.onnx",
+                "reward": 19.507993409240786,
+                "creation_time": 1795096253.2150023,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-149980.pt"
+                ]
+            },
+            {
+                "steps": 150978,
+                "file_path": "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-150978.onnx",
+                "reward": 19.480172085420538,
+                "creation_time": 1795096263.3132813,
+                "auxillary_file_paths": [
+                    "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-150978.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 150978,
+            "file_path": "results\\Roomba_Pro_v3\\RoombaCleaner.onnx",
+            "reward": 19.480172085420538,
+            "creation_time": 1795096263.3132813,
+            "auxillary_file_paths": [
+                "results\\Roomba_Pro_v3\\RoombaCleaner\\RoombaCleaner-150978.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.8.0+cu128"
+    }
+}
