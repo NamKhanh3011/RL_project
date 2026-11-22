@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Controls the room environment, floor bounds, procedural dirt spawning,
-/// episode stats, and < 60s speed challenge.
-/// </summary>
 public class RoomArea : MonoBehaviour
 {
     [Header("Environment Dimensions")]
@@ -21,47 +17,35 @@ public class RoomArea : MonoBehaviour
     public SimulationHUD hud;
 
     [Header("Stats Tracking")]
-    public int episodeNumber = 0;
-    public float elapsedTime = 0f;
-    public float bestTime = 0f;
+    public int episodeNumber;
+    public float elapsedTime;
+    public float bestTime;
 
-    // Episode timeout set to 4.0 minutes (240 seconds: comfortable 3-4 minute window)
     public const float MAX_EPISODE_TIME = 240f;
+    private const float DirtRewardTotal = 15f;
+    private const float CleanRoomBonus = 5f;
+    private const float SpawnClearance = 0.65f;
+    private readonly List<DirtItem> activeDirts = new List<DirtItem>();
+    private int initialDirtCount;
 
-    private List<DirtItem> activeDirts = new List<DirtItem>();
-    private int initialDirtCount = 0;
-
-    void Start()
+    private void Start()
     {
         if (activeDirts.Count == 0)
-        {
             ResetEpisode();
-        }
     }
 
-    void Update()
+    private void Update()
     {
         elapsedTime += Time.deltaTime;
+        if (agent == null) return;
 
-        // If time runs over 60 seconds without cleaning all dirt -> Timeout restart
         if (elapsedTime >= MAX_EPISODE_TIME && activeDirts.Count > 0)
-        {
-            if (agent != null)
-            {
-                agent.EndEpisode(); // Forces AI to learn that it MUST finish under 60 seconds!
-            }
-        }
+            agent.EndEpisode();
 
-        if (hud != null && agent != null)
+        if (hud != null)
         {
-            hud.UpdateDisplay(
-                episodeNumber,
-                agent.StepCount,
-                elapsedTime,
-                bestTime,
-                agent.GetCumulativeReward(),
-                activeDirts.Count
-            );
+            hud.UpdateDisplay(episodeNumber, agent.StepCount, elapsedTime, bestTime,
+                agent.GetCumulativeReward(), activeDirts.Count);
         }
     }
 
@@ -70,17 +54,13 @@ public class RoomArea : MonoBehaviour
         episodeNumber++;
         elapsedTime = 0f;
 
-        // Clean up remaining dirt
-        for (int i = activeDirts.Count - 1; i >= 0; i--)
+        foreach (DirtItem dirt in activeDirts)
         {
-            if (activeDirts[i] != null)
-            {
-                Destroy(activeDirts[i].gameObject);
-            }
+            if (dirt != null)
+                Destroy(dirt.gameObject);
         }
         activeDirts.Clear();
 
-        // Spawn uniform grid of dirt
         SpawnDirtGrid();
         initialDirtCount = activeDirts.Count;
     }
@@ -89,107 +69,91 @@ public class RoomArea : MonoBehaviour
     {
         if (floorTransform == null || dirtPrefab == null) return;
 
-        Renderer floorRenderer = floorTransform.GetComponent<Renderer>();
-        Bounds bounds = floorRenderer.bounds;
+        Bounds bounds = floorTransform.GetComponent<Renderer>().bounds;
+        float y = bounds.max.y + dirtHeight;
 
-        float startX = bounds.min.x + 0.65f;
-        float endX = bounds.max.x - 0.65f;
-        float startZ = bounds.min.z + 0.65f;
-        float endZ = bounds.max.z - 0.65f;
-
-        for (float x = startX; x <= endX; x += gridSpacing)
+        for (float x = bounds.min.x + SpawnClearance; x <= bounds.max.x - SpawnClearance; x += gridSpacing)
         {
-            for (float z = startZ; z <= endZ; z += gridSpacing)
+            for (float z = bounds.min.z + SpawnClearance; z <= bounds.max.z - SpawnClearance; z += gridSpacing)
             {
-                // Exclude narrow/inaccessible areas where dirt could get trapped:
-                // 1. Under dining table, legs, and chairs (X: -1.0 to 2.6, Z >= 2.0)
-                if (x >= -1.0f && x <= 2.6f && z >= 2.0f) continue;
-                // 2. Behind and under sofa
-                if (x >= 3.6f && z <= 1.2f) continue;
-                // 3. Under coffee table
-                if (x >= 1.8f && x <= 3.2f && z >= -1.7f && z <= 0.5f) continue;
-                // 4. Back-left corner (Bookshelf & Floor lamp)
-                if (x <= -1.8f && z >= 3.0f) continue;
-                // 5. Back-right corner (Potted plant & Wall)
-                if (x >= 3.0f && z >= 3.0f) continue;
-                // 6. Left potted plant
-                if (x <= -4.2f && z >= -0.2f && z <= 1.8f) continue;
+                Vector3 position = new Vector3(x, y, z);
+                if (IsInaccessible(x, z) || HasNearbyObstacle(position))
+                    continue;
 
-                Vector3 spawnPos = new Vector3(x, bounds.max.y + dirtHeight, z);
+                GameObject dirtObject = Instantiate(dirtPrefab, position, Quaternion.identity, transform);
+                dirtObject.SetActive(true);
+                if (!dirtObject.TryGetComponent(out DirtItem dirt))
+                    dirt = dirtObject.AddComponent<DirtItem>();
 
-                // Overlap check with safe 0.65m margin from all obstacles
-                Collider[] colliders = Physics.OverlapSphere(spawnPos, 0.65f);
-                bool isBlocked = false;
-
-                foreach (var col in colliders)
-                {
-                    if (col.transform == floorTransform) continue; // Ignore the floor!
-                    if (col.CompareTag("Dirt")) continue;
-
-                    if (col.CompareTag("Obstacle") || col.CompareTag("Wall") ||
-                        col.name.Contains("Chair") || col.name.Contains("Table") ||
-                        col.name.Contains("Sofa") || col.name.Contains("Leg") ||
-                        col.name.Contains("Wall") || col.name.Contains("Shelf") ||
-                        col.name.Contains("Lamp") || col.name.Contains("Plant"))
-                    {
-                        isBlocked = true;
-                        break;
-                    }
-                }
-
-                if (!isBlocked)
-                {
-                    GameObject dirtObj = Instantiate(dirtPrefab, spawnPos, Quaternion.identity, transform);
-                    dirtObj.SetActive(true);
-                    DirtItem dirt = dirtObj.GetComponent<DirtItem>();
-                    if (dirt == null) dirt = dirtObj.AddComponent<DirtItem>();
-                    dirt.Init(this);
-                    activeDirts.Add(dirt);
-                }
+                dirt.Init(this);
+                activeDirts.Add(dirt);
             }
         }
     }
 
-    public void CollectDirt(DirtItem dirt)
+    private static bool IsInaccessible(float x, float z)
     {
-        activeDirts.Remove(dirt);
-        if (agent != null && initialDirtCount > 0)
+        return (x >= -1f && x <= 2.6f && z >= 2f) || // Dining table and chairs
+               (x >= 3.6f && z <= 1.2f) ||           // Sofa
+               (x >= 1.8f && x <= 3.2f && z >= -1.7f && z <= 0.5f) || // Coffee table
+               (x <= -1.8f && z >= 3f) ||           // Bookshelf and lamp
+               (x >= 3f && z >= 3f) ||              // Back-right plant
+               (x <= -4.2f && z >= -0.2f && z <= 1.8f); // Left plant
+    }
+
+    private bool HasNearbyObstacle(Vector3 position)
+    {
+        foreach (Collider collider in Physics.OverlapSphere(position, SpawnClearance))
         {
-            // Exactly 15.0 points total divided across all dirt items
-            float rewardPerDirt = 15.0f / initialDirtCount;
-            agent.AddReward(rewardPerDirt);
+            if (collider.transform == floorTransform || collider.CompareTag("Dirt"))
+                continue;
+
+            if (collider.CompareTag("Obstacle") || collider.CompareTag("Wall"))
+                return true;
+
+            string name = collider.name;
+            if (name.Contains("Chair") || name.Contains("Table") || name.Contains("Sofa") ||
+                name.Contains("Leg") || name.Contains("Wall") || name.Contains("Shelf") ||
+                name.Contains("Lamp") || name.Contains("Plant"))
+                return true;
         }
 
-        // Win Condition: 100% of room cleaned!
-        if (activeDirts.Count == 0)
+        return false;
+    }
+
+    public void CollectDirt(DirtItem dirt)
+    {
+        // Both colliders can report the same pickup before Unity destroys the object.
+        if (!activeDirts.Remove(dirt)) return;
+        Destroy(dirt.gameObject);
+
+        if (agent != null && initialDirtCount > 0)
+            agent.AddReward(DirtRewardTotal / initialDirtCount);
+
+        if (activeDirts.Count > 0) return;
+
+        if (bestTime == 0f || elapsedTime < bestTime)
+            bestTime = elapsedTime;
+
+        Debug.Log($"<color=green><b>[Roomba Simulation] 100% ROOM CLEANED!</b></color> Time: {elapsedTime:F1}s | Best: {bestTime:F1}s | Episode: {episodeNumber}");
+
+        if (agent != null)
         {
-            if (bestTime == 0f || elapsedTime < bestTime)
-            {
-                bestTime = elapsedTime;
-            }
-
-            Debug.Log($"<color=green><b>[Roomba Simulation] 100% ROOM CLEANED!</b></color> Time: {elapsedTime:F1}s | Best: {bestTime:F1}s | Episode: {episodeNumber}");
-
-            if (agent != null)
-            {
-                // Flat win bonus +5.0 points -> Total = Exactly 20.0 max!
-                agent.AddReward(5.0f);
-                agent.EndEpisode();
-            }
+            agent.AddReward(CleanRoomBonus);
+            agent.EndEpisode();
         }
     }
 
     public float GetDirtRatio()
     {
-        if (initialDirtCount == 0) return 0f;
-        return (float)activeDirts.Count / initialDirtCount;
+        return initialDirtCount > 0 ? (float)activeDirts.Count / initialDirtCount : 0f;
     }
 
-    /// <summary>
-    /// Finds the optimal next dirt item:
-    /// - If nearby dirt exists, sweeps local dirts efficiently.
-    /// - If current zone is cleaned (nearest dirt > 2.2m), enters Fast Transit to the richest cluster!
-    /// </summary>
+    public bool GetNearestDirtInfo(Transform agentTransform, out Vector3 localDir, out Vector3 worldDir, out float distance)
+    {
+        return GetNearestDirtInfo(agentTransform, out localDir, out worldDir, out distance, out _);
+    }
+
     public bool GetNearestDirtInfo(Transform agentTransform, out Vector3 localDir, out Vector3 worldDir, out float distance, out bool isTransitMode)
     {
         localDir = Vector3.forward;
@@ -197,101 +161,86 @@ public class RoomArea : MonoBehaviour
         distance = 15f;
         isTransitMode = false;
 
-        if (activeDirts.Count == 0) return false;
-
         Vector3 agentPos = agentTransform.position;
-        Vector3 forward = agentTransform.forward;
-
-        // 1. Find true closest dirt by Euclidean distance
         DirtItem closestDirt = null;
         float minDistance = float.MaxValue;
 
-        for (int i = 0; i < activeDirts.Count; i++)
+        foreach (DirtItem dirt in activeDirts)
         {
-            if (activeDirts[i] == null) continue;
-            Vector3 diff = activeDirts[i].transform.position - agentPos;
-            diff.y = 0f;
-            float dist = diff.magnitude;
+            if (dirt == null) continue;
 
-            if (dist < minDistance)
-            {
-                minDistance = dist;
-                closestDirt = activeDirts[i];
-            }
+            float candidateDistance = OffsetToDirt(dirt, agentPos).magnitude;
+            if (candidateDistance >= minDistance) continue;
+
+            minDistance = candidateDistance;
+            closestDirt = dirt;
         }
 
         if (closestDirt == null) return false;
 
-        DirtItem targetDirt = closestDirt;
+        isTransitMode = minDistance > 2.2f && activeDirts.Count > 1;
+        DirtItem target = isTransitMode
+            ? FindDensestCluster(closestDirt)
+            : FindLocalTarget(closestDirt, agentPos, worldDir, minDistance + 0.9f);
 
-        // 2. If current zone is cleaned out (nearest dirt > 2.2m), transit fast to the richest dirt cluster!
-        if (minDistance > 2.2f && activeDirts.Count > 1)
-        {
-            isTransitMode = true;
-
-            // Find dirt with the most neighbor dirts within 2.8m (richest pocket of reward)
-            DirtItem bestClusterDirt = closestDirt;
-            int maxNeighbors = -1;
-
-            for (int i = 0; i < activeDirts.Count; i++)
-            {
-                if (activeDirts[i] == null) continue;
-                Vector3 p1 = activeDirts[i].transform.position;
-                int neighbors = 0;
-
-                for (int j = 0; j < activeDirts.Count; j++)
-                {
-                    if (i == j || activeDirts[j] == null) continue;
-                    Vector3 p2 = activeDirts[j].transform.position;
-                    if ((p1 - p2).sqrMagnitude < 7.84f) // within 2.8m
-                    {
-                        neighbors++;
-                    }
-                }
-
-                if (neighbors > maxNeighbors)
-                {
-                    maxNeighbors = neighbors;
-                    bestClusterDirt = activeDirts[i];
-                }
-            }
-
-            targetDirt = bestClusterDirt;
-        }
-        else
-        {
-            // Local sweeping: among nearby candidates (within minDistance + 0.9m), prefer forward heading
-            float bestLocalScore = float.MaxValue;
-            for (int i = 0; i < activeDirts.Count; i++)
-            {
-                if (activeDirts[i] == null) continue;
-                Vector3 diff = activeDirts[i].transform.position - agentPos;
-                diff.y = 0f;
-                float d = diff.magnitude;
-
-                if (d <= minDistance + 0.9f)
-                {
-                    float anglePenalty = (1.0f - Vector3.Dot(forward, diff.normalized)) * 0.4f;
-                    float score = d + anglePenalty;
-                    if (score < bestLocalScore)
-                    {
-                        bestLocalScore = score;
-                        targetDirt = activeDirts[i];
-                    }
-                }
-            }
-        }
-
-        Vector3 targetDiff = targetDirt.transform.position - agentPos;
-        targetDiff.y = 0f;
-        distance = targetDiff.magnitude;
-        worldDir = targetDiff.normalized;
+        Vector3 offset = OffsetToDirt(target, agentPos);
+        distance = offset.magnitude;
+        worldDir = offset.normalized;
         localDir = agentTransform.InverseTransformDirection(worldDir);
         return true;
     }
 
-    public bool GetNearestDirtInfo(Transform agentTransform, out Vector3 localDir, out Vector3 worldDir, out float distance)
+    private DirtItem FindLocalTarget(DirtItem target, Vector3 agentPos, Vector3 forward, float maxDistance)
     {
-        return GetNearestDirtInfo(agentTransform, out localDir, out worldDir, out distance, out _);
+        float bestScore = float.MaxValue;
+        foreach (DirtItem dirt in activeDirts)
+        {
+            if (dirt == null) continue;
+
+            Vector3 offset = OffsetToDirt(dirt, agentPos);
+            float distance = offset.magnitude;
+            if (distance > maxDistance) continue;
+
+            float anglePenalty = (1f - Vector3.Dot(forward, offset.normalized)) * 0.4f;
+            float score = distance + anglePenalty;
+            if (score >= bestScore) continue;
+
+            bestScore = score;
+            target = dirt;
+        }
+
+        return target;
+    }
+
+    private DirtItem FindDensestCluster(DirtItem target)
+    {
+        const float neighborRadiusSquared = 7.84f; // 2.8 m squared
+        int maxNeighbors = -1;
+        foreach (DirtItem dirt in activeDirts)
+        {
+            if (dirt == null) continue;
+
+            Vector3 position = dirt.transform.position;
+            int neighbors = 0;
+            foreach (DirtItem other in activeDirts)
+            {
+                if (other != null && other != dirt && (position - other.transform.position).sqrMagnitude < neighborRadiusSquared)
+                    neighbors++;
+            }
+
+            if (neighbors <= maxNeighbors) continue;
+
+            maxNeighbors = neighbors;
+            target = dirt;
+        }
+
+        return target;
+    }
+
+    private static Vector3 OffsetToDirt(DirtItem dirt, Vector3 from)
+    {
+        Vector3 offset = dirt.transform.position - from;
+        offset.y = 0f;
+        return offset;
     }
 }

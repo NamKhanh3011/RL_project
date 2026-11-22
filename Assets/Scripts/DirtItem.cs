@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Represents an individual dirt / dust node on the floor.
-/// Spun continuously for visual flair and collected when the vacuum robot touches it.
-/// </summary>
 public class DirtItem : MonoBehaviour
 {
     private RoomArea roomArea;
@@ -14,21 +10,19 @@ public class DirtItem : MonoBehaviour
         roomArea = area;
     }
 
-    void Update()
+    private void Update()
     {
-        // Continuous slow rotation like in the original game
         transform.Rotate(Vector3.up, spinSpeed * Time.deltaTime, Space.World);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player") || other.GetComponent<VacuumAgent>() != null)
-        {
-            if (roomArea != null)
-            {
-                roomArea.CollectDirt(this);
-            }
+        if (!other.CompareTag("Player") && !other.TryGetComponent<VacuumAgent>(out _))
+            return;
+
+        if (roomArea != null)
+            roomArea.CollectDirt(this);
+        else
             Destroy(gameObject);
-        }
     }
 }
