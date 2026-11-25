@@ -1,0 +1,36 @@
+default_settings: null
+behaviors:
+  RoombaCleaner:
+    trainer_type: sac
+    hyperparameters:
+      learning_rate: 0.0003
+      learning_rate_schedule: constant
+      batch_size: 256
+      buffer_size: 100000
+      buffer_init_steps: 2000
+      tau: 0.005
+      steps_per_update: 4.0
+      save_replay_buffer: false
+      init_entcoef: 0.5
+    network_settings:
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    checkpoint_interval: 50000
+    max_steps: 300000
+    time_horizon: 64
+    summary_freq: 10000
+env_settings:
+  seed: 303
+engine_settings:
+  width: 1280
+  height: 720
+  quality_level: 5
+  time_scale: 5
+  capture_frame_rate: 60
+  no_graphics: false
