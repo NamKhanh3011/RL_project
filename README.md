@@ -56,7 +56,9 @@ The project includes training configuration located at `config/roomba_ppo.yaml`.
 
 1. Run `train.bat` in the root folder, or execute the following command in terminal:
    ```bash
-   mlagents-learn config/roomba_ppo.yaml --run-id=Roomba_Pro_v1 --resume
+   conda activate mlagents
+   cd C:\Users\namkh\OneDrive\Apps\RoombaCleanerSimulation
+   mlagents-learn config/roomba_ppo.yaml --run-id="Roomba_Pro_v4"
    ```
 2. When the console displays:
    ```text
