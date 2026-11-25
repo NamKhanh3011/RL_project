@@ -4,37 +4,25 @@ behaviors:
     trainer_type: ppo
     hyperparameters:
       batch_size: 512
-      buffer_size: 10240
-      learning_rate: 0.00025
-      beta: 0.003
+      buffer_size: 8192
+      learning_rate: 0.00035
+      beta: 0.004
       epsilon: 0.2
       lambd: 0.95
-      num_epoch: 3
+      num_epoch: 4
       learning_rate_schedule: linear
-      beta_schedule: linear
-      epsilon_schedule: linear
     network_settings:
-      normalize: true
+      normalize: false
       hidden_units: 128
       num_layers: 2
-      memory:
-        sequence_length: 64
-        memory_size: 128
     reward_signals:
       extrinsic:
-        gamma: 0.995
+        gamma: 0.99
         strength: 1.0
     keep_checkpoints: 5
     checkpoint_interval: 50000
     max_steps: 200000
-    time_horizon: 128
+    time_horizon: 64
     summary_freq: 10000
 env_settings:
-  seed: 202
-engine_settings:
-  width: 960
-  height: 540
-  quality_level: 3
-  time_scale: 10
-  capture_frame_rate: 60
-  no_graphics: false
+  seed: 42
